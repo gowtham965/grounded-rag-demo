@@ -1,0 +1,14 @@
+[
+  {"id": "Q1",  "customer": "acme",   "type": "answer", "question": "What is the monthly rent for our office?", "must_contain": ["2,40,000"], "expected_source": "Acme_Office_Lease.pdf"},
+  {"id": "Q2",  "customer": "acme",   "type": "answer", "question": "How much is the late fee if rent is paid late?", "must_contain": ["2%"], "expected_source": "Acme_Office_Lease.pdf"},
+  {"id": "Q3",  "customer": "acme",   "type": "answer", "question": "How long is the lock-in period before we can terminate the lease?", "must_contain": ["12 months"], "expected_source": "Acme_Office_Lease.pdf"},
+  {"id": "Q4",  "customer": "acme",   "type": "answer", "question": "What is the deductible on an own-damage insurance claim?", "must_contain": ["25,000"], "expected_source": "Acme_Fleet_Insurance.pdf"},
+  {"id": "Q5",  "customer": "acme",   "type": "answer", "question": "Within how many hours do we have to report an insurance claim?", "must_contain": ["48"], "expected_source": "Acme_Fleet_Insurance.pdf"},
+  {"id": "Q6",  "customer": "acme",   "type": "answer", "question": "How much was the October rent invoice and why was it higher than usual?", "must_contain": ["244", "late fee"], "expected_source": "record INV-1057"},
+  {"id": "Q7",  "customer": "acme",   "type": "answer", "question": "Is damage caused by a drunk or unlicensed driver covered by our fleet policy?", "must_contain": ["exclu"], "expected_source": "Acme_Fleet_Insurance.pdf"},
+  {"id": "Q8",  "customer": "globex", "type": "answer", "question": "How many unused leave days can be carried over to next year?", "must_contain": ["6"], "expected_source": "Globex_Employee_Handbook.pdf"},
+  {"id": "Q9",  "customer": "acme",   "type": "refuse", "question": "What is the capital of France?"},
+  {"id": "Q10", "customer": "acme",   "type": "refuse", "question": "Write me a short poem about the ocean."},
+  {"id": "Q11", "customer": "globex", "type": "refuse", "question": "What is the monthly rent for the Orion Business Park office?", "note": "Acme's data - must not leak to Globex"},
+  {"id": "Q12", "customer": "acme",   "type": "absent", "question": "How many years is the warehouse racking warranty?", "note": "Answer only exists in data/holdout, which is never ingested"}
+]

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assistant panel - grounded RAG demo</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1d2330; --muted:#6b7385; --line:#e3e6ec; --accent:#2f5bea; }
+  * { box-sizing:border-box } body { margin:0; font:15px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--ink) }
+  .panel { max-width:720px; margin:32px auto; background:var(--card); border:1px solid var(--line); border-radius:12px; display:flex; flex-direction:column; height:calc(100vh - 64px) }
+  header { padding:14px 18px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center }
+  header h1 { font-size:16px; margin:0; flex:1 }
+  header select, header input { font:inherit; padding:4px 8px; border:1px solid var(--line); border-radius:6px }
+  #log { flex:1; overflow:auto; padding:18px }
+  .q { font-weight:600; margin:18px 0 6px } .a { white-space:pre-wrap }
+  .meta { font-size:12px; color:var(--muted); margin-top:6px; display:flex; gap:12px; align-items:center }
+  .meta button { font:inherit; font-size:12px; border:1px solid var(--line); background:none; border-radius:6px; padding:2px 8px; cursor:pointer }
+  .sources { display:none; margin-top:8px; border-left:3px solid var(--accent); padding-left:10px; font-size:13px }
+  .sources.open { display:block } .sources div { margin-bottom:6px } .sources small { color:var(--muted) }
+  .flag { color:#b45309 } .refused { color:var(--muted); font-style:italic }
+  form { display:flex; gap:8px; padding:14px; border-top:1px solid var(--line) }
+  form input { flex:1; font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:8px }
+  form button { font:inherit; padding:10px 16px; border:0; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer }
+</style>
+</head>
+<body>
+<div class="panel">
+  <header>
+    <h1>Ask your documents</h1>
+    <!-- Demo only: in a real app the customer comes from the login session -->
+    <select id="customer"><option>acme</option><option>globex</option></select>
+    <input id="token" placeholder="API token" size="12">
+  </header>
+  <div id="log"></div>
+  <form id="f"><input id="q" placeholder="e.g. What is the late fee on rent?" autocomplete="off"><button>Ask</button></form>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+$("#token").value = localStorage.getItem("token") || "";
+$("#f").onsubmit = async e => {
+  e.preventDefault();
+  const question = $("#q").value.trim(); if (!question) return;
+  $("#q").value = ""; localStorage.setItem("token", $("#token").value);
+  const box = document.createElement("div");
+  box.innerHTML = `<div class="q"></div><div class="a"></div><div class="meta"></div><div class="sources"></div>`;
+  box.querySelector(".q").textContent = question; $("#log").append(box);
+  const a = box.querySelector(".a");
+  const res = await fetch("/chat", { method:"POST",
+    headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + $("#token").value },
+    body: JSON.stringify({ customer_id: $("#customer").value, question }) });
+  if (!res.ok) { a.textContent = `Error ${res.status}: ${(await res.json()).detail}`; return; }
+  const reader = res.body.getReader(), dec = new TextDecoder(); let buf = "";
+  while (true) {
+    const { value, done } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream:true });
+    let i; while ((i = buf.indexOf("\n\n")) >= 0) {
+      const line = buf.slice(0, i); buf = buf.slice(i + 2);
+      if (!line.startsWith("data: ")) continue;
+      const ev = JSON.parse(line.slice(6));
+      if (ev.type === "token") { a.textContent += ev.text; $("#log").scrollTop = 1e9; }
+      if (ev.type === "final") render(box, ev);
+      if (ev.type === "error") a.textContent = "Something went wrong (" + ev.message + "). Please try again.";
+    }
+  }
+};
+function render(box, ev) {
+  const meta = box.querySelector(".meta"), src = box.querySelector(".sources");
+  if (ev.refused) box.querySelector(".a").classList.add("refused");
+  meta.innerHTML = `<span>first token ${ev.first_token_ms} ms</span>`;
+  if (!ev.grounded) meta.innerHTML += `<span class="flag">⚠ no valid citation</span>`;
+  if (ev.sources.length) {
+    const b = document.createElement("button"); b.textContent = `Sources (${ev.sources.length})`;
+    b.onclick = () => src.classList.toggle("open"); meta.prepend(b);
+    for (const s of ev.sources) {
+      const d = document.createElement("div");
+      d.innerHTML = `<b></b><br><small></small>`;
+      d.querySelector("b").textContent = `[${s.n}] ${s.label}`;
+      d.querySelector("small").textContent = s.excerpt;
+      src.append(d);
+    }
+  }
+}
+</script>
+</body>
+</html>

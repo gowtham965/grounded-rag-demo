@@ -1,0 +1,5 @@
+[
+  {"id": "INV-1042", "type": "invoice", "date": "2026-09-05", "vendor": "Brightstone Properties", "amount_inr": 240000, "status": "paid", "note": "September rent"},
+  {"id": "INV-1057", "type": "invoice", "date": "2026-10-12", "vendor": "Brightstone Properties", "amount_inr": 244800, "status": "paid", "note": "October rent including 2% late fee"},
+  {"id": "TKT-311", "type": "support_ticket", "date": "2026-10-20", "subject": "Truck KA-01-AB-4471 rear bumper damage", "status": "open", "note": "Insurance claim filed on 2026-10-21"}
+]

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin - grounded RAG demo</title>
+<style>
+  body { margin:0; font:14px/1.5 system-ui,sans-serif; background:#f6f7f9; color:#1d2330 }
+  main { max-width:1100px; margin:24px auto; padding:0 16px }
+  section { background:#fff; border:1px solid #e3e6ec; border-radius:12px; padding:16px; margin-bottom:16px }
+  h2 { margin:0 0 10px; font-size:16px } textarea { width:100%; height:170px; font:13px ui-monospace,monospace; padding:8px }
+  button { font:inherit; padding:6px 14px; border:0; border-radius:6px; background:#2f5bea; color:#fff; cursor:pointer }
+  input { font:inherit; padding:5px 8px; border:1px solid #e3e6ec; border-radius:6px }
+  table { width:100%; border-collapse:collapse; font-size:13px } th, td { text-align:left; vertical-align:top; padding:6px; border-bottom:1px solid #eef0f4 }
+  th { color:#6b7385; font-weight:600 } .no { color:#b45309 } #msg { margin-left:8px; color:#6b7385 }
+</style>
+</head>
+<body>
+<main>
+  <section><input id="tok" placeholder="Admin token"> <button onclick="load()">Load</button><span id="msg"></span></section>
+  <section><h2>System prompt</h2><textarea id="prompt"></textarea><br><br><button onclick="save()">Save prompt</button></section>
+  <section><h2>Question log</h2>
+    <table><thead><tr><th>Time</th><th>Customer</th><th>Question</th><th>Answer</th><th>Sources</th><th>Grounded</th><th>Tokens</th><th>Cost $</th><th>1st token</th></tr></thead><tbody id="rows"></tbody></table>
+  </section>
+</main>
+<script>
+const H = () => ({ "Authorization":"Bearer " + document.getElementById("tok").value, "Content-Type":"application/json" });
+const msg = t => document.getElementById("msg").textContent = t;
+async function load() {
+  const p = await fetch("/admin/prompt", { headers:H() });
+  if (!p.ok) return msg("Wrong token");
+  document.getElementById("prompt").value = (await p.json()).system_prompt;
+  const rows = await (await fetch("/admin/log", { headers:H() })).json();
+  const tb = document.getElementById("rows"); tb.innerHTML = "";
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    const cells = [new Date(r.ts*1000).toLocaleString(), r.customer_id, r.question, r.answer,
+      r.sources.map(s => s.label).join("\n") || "-", r.refused ? "refused" : (r.grounded ? "yes" : "NO"),
+      `${r.prompt_tokens}+${r.completion_tokens}`, r.cost_usd == null ? "-" : r.cost_usd.toFixed(5), `${r.first_token_ms} ms`];
+    for (const c of cells) { const td = document.createElement("td"); td.textContent = c; td.style.whiteSpace = "pre-wrap"; if (c === "NO") td.className = "no"; tr.append(td); }
+    tb.append(tr);
+  }
+  msg(`${rows.length} entries`);
+}
+async function save() {
+  const r = await fetch("/admin/prompt", { method:"PUT", headers:H(), body: JSON.stringify({ system_prompt: document.getElementById("prompt").value }) });
+  msg(r.ok ? "Saved" : "Save failed");
+}
+</script>
+</body>
+</html>

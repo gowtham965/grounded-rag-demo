@@ -1,0 +1,2 @@
+# Web pages to ingest, one per line: <customer_id> <url>
+# acme https://example.com/acme-shipping-policy
