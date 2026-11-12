@@ -98,11 +98,24 @@ The report (`eval/report.md`) shows correctness, citation accuracy, refusal accu
 ## Project layout
 
 ```
-app/   config.py  embed.py  ingest.py  retrieve.py  rag.py  db.py  main.py
+app/
+  config.py     all settings, read from .env
+  loaders.py    PDFs / web pages / records -> chunks          (bad page numbers, missing text)
+  ingest.py     build the per-customer index (make ingest)    (stale or missing index)
+  embed.py      embeddings via LiteLLM, or local-hash offline
+  retrieve.py   hybrid search + exact-ID match, per customer  (wrong chunks retrieved)
+  prompt.py     system prompt + numbered sources -> messages  (model ignores rules)
+  llm.py        streaming model call, tokens and cost         (provider errors, cost = null)
+  citations.py  refusal / valid-citation / grounded checks    (answer flagged ungrounded)
+  rag.py        the pipeline: retrieve -> gate -> stream -> check -> log
+  db.py         SQLite question log + editable system prompt
+  auth.py       tokens (shared or per-customer) + rate limit  (401 / 403 / 429)
+  admin.py      /admin/prompt and /admin/log API
+  main.py       FastAPI app, POST /chat (SSE), HTML pages
 web/   index.html (assistant panel)  admin.html
 eval/  questions.json  run_eval.py
 data/  docs/<customer>/  records/  holdout/  urls.txt
-tests/ test_pipeline.py
+tests/ conftest.py (fixtures)  helpers.py (fake LLM)  test_ingest  test_retrieve  test_rag  test_api
 ```
 
 All sample companies and documents are fictional (`scripts/make_sample_docs.py`).
