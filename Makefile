@@ -10,3 +10,5 @@ eval-judge:
 	python -m eval.run_eval --judge
 test:
 	pytest -q tests
+panel:
+	cd web/react && npm install && npm run build

@@ -42,3 +42,10 @@ def test_customer_tokens_bind_tenant(app_env, client, monkeypatch):
 
 async def _fake_answer_stream(customer_id, question, user_id):
     yield {"type": "final", "answer": "ok", "sources": []}
+
+
+def test_react_panel_served(client):
+    c = client()
+    assert "/static/react/panel.js" in c.get("/app").text
+    assert c.get("/static/react/panel.js").status_code == 200
+    assert c.get("/static/react/panel.css").status_code == 200

@@ -33,7 +33,7 @@ question + customer_id ──► hybrid retrieval ──► relevance gate ─�
 - **Retrieval:** dense embeddings + BM25, merged with reciprocal rank fusion. Exact figures and IDs ("INV-1057", "2%") are caught by BM25 when embeddings miss them.
 - **Store:** NumPy + JSON per customer, so the demo needs no setup. For production, swap in Postgres + pgvector with the same `customer_id` filter.
 - **API:** FastAPI + SSE. **LLM:** LiteLLM (provider-agnostic, streaming, cost tracking)
-- **UI:** a dependency-free panel (`web/index.html`) and admin page. It's the same fetch-stream logic you'd drop into a React component.
+- **UI:** a React `AssistantPanel` component with a sources toggle (`web/react`), a dependency-free fallback panel (`web/index.html`) and an admin page.
 
 ## Setup (fresh clone)
 
@@ -52,6 +52,8 @@ Open http://localhost:8000. Enter your `API_TOKEN`, pick a customer (`acme` or `
 - *What is the capital of France?* → refusal
 
 Admin page: http://localhost:8000/admin (use `ADMIN_TOKEN`).
+
+React panel: http://localhost:8000/app. The component is `web/react/src/AssistantPanel.jsx` (with the `useChatStream` hook); drop it into your app and pass your session's auth headers. The built bundle in `web/react/dist/` is committed, so Node is only needed to change it: `make panel`.
 
 ### Adding and re-indexing documents
 
@@ -112,7 +114,8 @@ app/
   auth.py       tokens (shared or per-customer) + rate limit  (401 / 403 / 429)
   admin.py      /admin/prompt and /admin/log API
   main.py       FastAPI app, POST /chat (SSE), HTML pages
-web/   index.html (assistant panel)  admin.html
+web/   index.html (plain-JS panel)  admin.html
+       react/src/  AssistantPanel.jsx  useChatStream.js  demo.jsx   react/dist/ (built bundle)
 eval/  questions.json  run_eval.py
 data/  docs/<customer>/  records/  holdout/  urls.txt
 tests/ conftest.py (fixtures)  helpers.py (fake LLM)  test_ingest  test_retrieve  test_rag  test_api

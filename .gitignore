@@ -4,3 +4,4 @@ index/
 __pycache__/
 .pytest_cache/
 .venv/
+node_modules/

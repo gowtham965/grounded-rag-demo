@@ -3,6 +3,7 @@ import json
 
 from fastapi import FastAPI, Header
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import db
@@ -13,6 +14,8 @@ from .rag import answer_stream
 
 app = FastAPI(title="Grounded RAG demo")
 app.include_router(admin_router)
+# Built React panel (web/react/dist, committed; rebuild with `make panel`).
+app.mount("/static/react", StaticFiles(directory=ROOT / "web/react/dist"), name="react")
 db.init()
 
 
@@ -40,6 +43,11 @@ async def chat(body: ChatIn, authorization: str | None = Header(None), x_user_id
 @app.get("/")
 def panel():
     return FileResponse(ROOT / "web/index.html")
+
+
+@app.get("/app")
+def react_panel():
+    return FileResponse(ROOT / "web/react/index.html")
 
 
 @app.get("/admin")
