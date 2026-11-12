@@ -26,7 +26,13 @@ class Settings:
     min_relevance = float(os.getenv("MIN_RELEVANCE", "0.30"))   # below this, refuse without calling the LLM
     max_answer_tokens = int(os.getenv("MAX_ANSWER_TOKENS", "400"))
     rate_limit_per_min = int(os.getenv("RATE_LIMIT_PER_MIN", "10"))
-    api_token = os.getenv("API_TOKEN", "")              # bearer token for /chat (stand-in for your app's login)
+    api_token = os.getenv("API_TOKEN", "")              # shared bearer token for /chat (demo only: any customer)
+    # "acme:tok1,globex:tok2" -> each token can only query its own customer. When set, API_TOKEN is ignored.
+    customer_tokens = {
+        tok.strip(): cust.strip()
+        for cust, _, tok in (p.partition(":") for p in os.getenv("CUSTOMER_TOKENS", "").split(",") if ":" in p)
+        if tok.strip()
+    }
     admin_token = os.getenv("ADMIN_TOKEN", "")
     refusal_message = os.getenv(
         "REFUSAL_MESSAGE", "That isn't in your documents, so I can't answer it."

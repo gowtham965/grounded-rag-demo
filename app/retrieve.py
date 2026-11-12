@@ -10,12 +10,25 @@ from .config import settings
 from .embed import embed
 
 
+CUSTOMER_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
 def _tok(s):
     return re.findall(r"[a-z0-9]+", s.lower())
 
 
+def identifier_match(question: str, hits) -> bool:
+    """True if the question names an exact identifier (a token with a digit, 3+ chars, e.g. the
+    '1057' in INV-1057) that appears verbatim in a retrieved chunk. Dense embeddings often score
+    such questions low, so this lets BM25's exact matches through the relevance gate."""
+    ids = {t for t in _tok(question) if len(t) >= 3 and any(ch.isdigit() for ch in t)}
+    return bool(ids) and any(ids & set(_tok(h["text"])) for h in hits)
+
+
 @lru_cache(maxsize=64)
 def _load(customer: str):
+    if not CUSTOMER_ID.match(customer):   # never let a customer id turn into a path outside the index
+        return None
     d = settings.index_dir / customer
     if not (d / "chunks.json").exists():
         return None

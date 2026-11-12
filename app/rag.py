@@ -4,7 +4,7 @@ import time
 
 from . import db
 from .config import settings
-from .retrieve import retrieve
+from .retrieve import identifier_match, retrieve
 
 CITE = re.compile(r"\[(\d+)\]")
 
@@ -53,8 +53,9 @@ async def answer_stream(customer_id: str, question: str, user_id: str = "anon"):
     hits, best = retrieve(customer_id, question)
     first_ms, text, usage = None, "", {}
 
-    if not hits or best < settings.min_relevance:
-        # Gate 1: nothing relevant retrieved -> fixed refusal, the LLM is never called.
+    if not hits or (best < settings.min_relevance and not identifier_match(question, hits)):
+        # Gate 1: nothing relevant retrieved (no close embedding and no exact ID match)
+        # -> fixed refusal, the LLM is never called.
         text = settings.refusal_message
         first_ms = int((time.perf_counter() - t0) * 1000)
         yield {"type": "token", "text": text}

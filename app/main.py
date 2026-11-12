@@ -23,6 +23,18 @@ def _auth(authorization: str | None, expected: str):
         raise HTTPException(401, "Unauthorized")
 
 
+def _auth_chat(authorization: str | None, customer_id: str):
+    """With CUSTOMER_TOKENS set, a token may only query the customer it belongs to."""
+    if not settings.customer_tokens:
+        return _auth(authorization, settings.api_token)
+    token = authorization[7:] if authorization and authorization.startswith("Bearer ") else None
+    owner = settings.customer_tokens.get(token) if token else None
+    if owner is None:
+        raise HTTPException(401, "Unauthorized")
+    if owner != customer_id:
+        raise HTTPException(403, "This token can't access that customer")
+
+
 def _throttle(user: str):
     now, q = time.time(), _hits[user]
     while q and now - q[0] > 60:
@@ -33,14 +45,14 @@ def _throttle(user: str):
 
 
 class ChatIn(BaseModel):
-    customer_id: str = Field(min_length=1, max_length=64)
+    customer_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,64}$")
     question: str = Field(min_length=1, max_length=2000)
 
 
 @app.post("/chat")
 async def chat(body: ChatIn, authorization: str | None = Header(None), x_user_id: str = Header("anon")):
     # In your app, customer_id comes from the logged-in session, never from the client body.
-    _auth(authorization, settings.api_token)
+    _auth_chat(authorization, body.customer_id)
     _throttle(f"{body.customer_id}:{x_user_id}")
 
     async def sse():

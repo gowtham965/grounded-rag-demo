@@ -17,9 +17,9 @@ question + customer_id ──► hybrid retrieval ──► relevance gate ─�
 
 | Requirement | How |
 |---|---|
-| Answer only from the customer's data | Each customer has its own index. Retrieval opens only that customer's index, so another tenant's data can't leak. |
+| Answer only from the customer's data | Each customer has its own index. Retrieval opens only that customer's index, so another tenant's data can't leak. `customer_id` must match `[A-Za-z0-9_-]{1,64}`, so it can't escape the index folder. With `CUSTOMER_TOKENS` set, each token can only query its own customer (403 otherwise). |
 | Show the source of every answer | The model must tag each sentence with `[n]`. The server keeps only citations that point at chunks it actually supplied and returns them as `doc + page` or `record ID`. |
-| Say "that isn't in your documents" | **Gate 1:** if the best retrieved chunk is below `MIN_RELEVANCE`, the fixed refusal is returned without calling the LLM. **Gate 2:** the prompt forbids general knowledge and requires the exact refusal text. |
+| Say "that isn't in your documents" | **Gate 1:** if the best embedding similarity is below `MIN_RELEVANCE` *and* the question names no exact identifier (e.g. `INV-1057`) found in a retrieved chunk, the fixed refusal is returned without calling the LLM. **Gate 2:** the prompt forbids general knowledge and requires the exact refusal text. |
 | Flag ungrounded answers | An answer with no valid citation is marked `grounded: false` in the stream, the panel and the log. |
 | Stream into the app | `POST /chat` returns Server-Sent Events (`token` events, then one `final` event with sources). |
 | Guardrails | Token cap per answer, per-user rate limit, refusal gate, bearer-token auth. |
@@ -74,7 +74,7 @@ data: {"type": "token", "text": "The deductible"}
 data: {"type": "final", "answer": "...", "sources": [{"n": 1, "label": "Acme_Fleet_Insurance.pdf (page 2)", ...}],
        "refused": false, "grounded": true, "first_token_ms": 640, "prompt_tokens": 812, "completion_tokens": 31, "cost_usd": 0.00014}
 ```
-In a real app, `customer_id` comes from the logged-in session, not from the request body.
+In a real app, `customer_id` comes from the logged-in session, not from the request body. Until then, set `CUSTOMER_TOKENS` so a token is bound to one customer; the shared `API_TOKEN` is for local demos only.
 
 ## Measuring grounding
 

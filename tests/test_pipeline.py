@@ -91,3 +91,52 @@ def test_api_auth_rate_limit_and_log(app_env, monkeypatch):
     assert len(log) == 3 and log[0]["sources"]
     assert c.put("/admin/prompt", json={"system_prompt": "Only use sources. {refusal}"},
                  headers={"Authorization": "Bearer a"}).status_code == 200
+
+
+def test_exact_identifier_passes_gate(app_env, monkeypatch):
+    # Even with a dense threshold nothing can reach, an exact ID found by BM25 must not be refused.
+    monkeypatch.setattr(app_env.config.settings, "min_relevance", 0.99)
+    monkeypatch.setattr(app_env.rag, "llm_stream", fake_llm("[1]"))
+    f = collect(app_env.rag, "acme", "What is INV-1057 for?")
+    assert not f["refused"]
+    hits, _ = app_env.retrieve.retrieve("acme", "What is INV-1057 for?")
+    assert any(h["source"] == "record INV-1057" for h in hits)
+
+
+def test_unknown_identifier_still_refused(app_env, monkeypatch):
+    async def boom(_):
+        raise AssertionError("LLM must not be called")
+        yield
+    monkeypatch.setattr(app_env.config.settings, "min_relevance", 0.99)
+    monkeypatch.setattr(app_env.rag, "llm_stream", boom)
+    f = collect(app_env.rag, "acme", "What is INV-9999 for?")
+    assert f["refused"]
+
+
+def test_bad_customer_id_rejected(app_env):
+    import app.main
+    importlib.reload(app.main)
+    from fastapi.testclient import TestClient
+    c = TestClient(app.main.app)
+    h = {"Authorization": "Bearer t"}
+    for bad in ["../acme", "acme/../globex", "a b", "."]:
+        assert c.post("/chat", json={"customer_id": bad, "question": "rent?"}, headers=h).status_code == 422
+    assert app_env.retrieve.retrieve("../index", "rent") == ([], 0.0)
+
+
+def test_customer_tokens_bind_tenant(app_env, monkeypatch):
+    monkeypatch.setenv("CUSTOMER_TOKENS", "acme:tok-acme, globex:tok-globex")
+    importlib.reload(app_env.config)
+    import app.main
+    importlib.reload(app.main)
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(app.main, "answer_stream", _fake_answer_stream)
+    c = TestClient(app.main.app)
+    body = {"customer_id": "acme", "question": "What is the monthly rent?"}
+    assert c.post("/chat", json=body, headers={"Authorization": "Bearer tok-globex"}).status_code == 403
+    assert c.post("/chat", json=body, headers={"Authorization": "Bearer t"}).status_code == 401   # shared token disabled
+    assert c.post("/chat", json=body, headers={"Authorization": "Bearer tok-acme"}).status_code == 200
+
+
+async def _fake_answer_stream(customer_id, question, user_id):
+    yield {"type": "final", "answer": "ok", "sources": []}
